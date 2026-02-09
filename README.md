@@ -33,10 +33,10 @@ Example) ?bw tynis fkdr duos —> Tigermarsh[G3]: tynis's duos FKDR: 6.45
 - lvl / level *
 
 *Accepted gamemodes*
-- solo / solos
-- doubles / duos / 2s
-- threes / trios / 3s
-- fours / 4s
+- solo / solos *
+- doubles / duos / 2s *
+- threes / trios / 3s *
+- fours / 4s *
 
 *either are accepted
 
