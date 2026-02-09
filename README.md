@@ -13,7 +13,9 @@ with no specific stat, returns important stats, with a specific stat will return
 Command : ?bw <username> [stat] [gamemode]
 
 Example) ?bw ableness ---> Tigermarsh[G3]: [82✫] ableness's FKDR-17.71, BBLR-4.75, WLR-5.29, FINALS-2125, WINS-593
+
 Example) ?bw 4xes fkdr ---> Tigermarsh[G3]: 4xes's FKDR: 49.83
+
 Example) ?bw tynis fkdr duos —> Tigermarsh[G3]: tynis's duos FKDR: 6.45
 
 *Accepted stats*
@@ -59,9 +61,6 @@ Example) ?calc ableness fkdr 20 ---> Tigermarsh[G3]: TARGET FKDR-> 20 NEEDED: 27
 Get support and join the Guild Discord
 
 Command: ?help
-
-If you encounter any bugs please DM me here or on hypixel (ableness/overambitious).
-If the bot is down lmk it should be up 24/7
 
 **QUICK REFERENCE**
 
