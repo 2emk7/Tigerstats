@@ -1,55 +1,52 @@
 const mineflayer = require('mineflayer');
 const Hypixel = require('hypixel-api-reborn');
-const readline = require('readline');
-const HYPIXEL_API_KEY = 'ENTER API KEY';
+const HYPIXEL_API_KEY = 'ENTER YOUR API KEY HERE';
 const hypixel = new Hypixel.Client(HYPIXEL_API_KEY);
-prefix = ['/gc', '/r']
+const prefix = ['/gc', '/r'];
+const statList = ['fkdr', 'finals', 'wlr', 'finaldeaths', 'wins', 'losses', 'level', 'bblr', 'blr', 'beds', 'bedslost'];
+const gamemodeList = ['overall', 'solo', 'solos', 'doubles', 'duos', '2s', 'threes', 'trios', '3s', 'fours', '4s'];
 
 // -------------------- Bot Setup --------------------
 const bot = mineflayer.createBot({
     host: 'mc.hypixel.net',
-    username: 'ENTER EMAIL',
+    username: 'ENTER MICROSOFT EMAIL HERE',
     auth: 'microsoft',
     version: '1.8.9'
 });
 
 //--------------------- recognize messages --------------------
 bot.on('message', async (message) => {
-
     const text = message.toString().trim();
     console.log(`[CHAT] ${text}`);
 
-    if (text.includes(bot.username)) return;
 
-    const isGuild = text.includes('Guild >');
-    const currentPrefix = isGuild ? prefix[0] : prefix[1];
+    const currentPrefix = text.includes('Guild >') ? prefix[0] : prefix[1];
 
+    // Check for commands in both guild and private messages
+    if (text.includes('?bw') && !(text.split('?bw')[1]?.trim())) {
+        console.log('Detected ?bw command without arguments');
+        bot.chat(`${currentPrefix} Error: no arguments`)
+        return;
+    }
+    console.log(`passed no args check`);
     if (text.includes('?help')) {
         bothelp(currentPrefix);
     } else if (text.includes('?calc')) {
         calc(text, currentPrefix);
     } else if (text.includes('?bw')) {
         handleBwCommand(text, currentPrefix);
+    } else if (text.includes('You cannot say the same message twice!')) {
+        bot.chat(`${currentPrefix} Error: Hypixel doesnt allow repeat outputs`);
     }
 });
-
 //--------------------- bot help --------------------
 function bothelp(prefix) {
-    bot.chat(`${prefix} Join for help or to see commands: https://discord.gg/sBdV4uwJVp`)
+    bot.chat(`${prefix} ?calc <username> <statRatio> <target#>`);
+    bot.chat(`${prefix} ?bw <username> [optional stat] [optional gamemode]`);
 }
-//--------------------- user input from terminal --------------------
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
 
-rl.on('line', (input) => {
-    if (!bot || !bot.player) return;
-
-    bot.chat(input);
-});
 //--------------------- calc function --------------------
-async function calc(text, prefix) { //?calc <username> <stat> < target>
+async function calc(text, prefix) {
     const afterCalctext = text.split('?calc ')[1];
 
     if (!afterCalctext) {
@@ -57,31 +54,36 @@ async function calc(text, prefix) { //?calc <username> <stat> < target>
         return;
     }
 
-    const parts = afterCalctext.split(' ');
-    const username = parts[0];
-    const statparam = parts[1];
-    const target = parts[2];
+    const parts = afterCalctext.split(' '); // ['ableness' , 'fkdr' , '20']
     console.log(parts);
-
+    const username = parts[0];
+    console.log(username);
+    const statparam = parts[1];
+    console.log(statparam);
+    const target = parseFloat(parts[2]);
+    console.log(target);
 
     try {
         const player = await hypixel.getPlayer(username);
+        let answer;
+
         switch (statparam) {
             case 'fkdr':
-                result = (target * player.stats.bedwars.finalDeaths) - player.stats.bedwars.finalKills;
+                answer = (target * player.stats.bedwars.finalDeaths) - player.stats.bedwars.finalKills;
                 break;
             case 'wlr':
-                result = (target * player.stats.bedwars.losses) - player.stats.bedwars.wins;
+                answer = (target * player.stats.bedwars.losses) - player.stats.bedwars.wins;
                 break;
             case 'bblr':
             case 'blr':
-                result = (target * player.stats.bedwars.beds.lost) - player.stats.bedwars.beds.broken;
+                answer = (target * player.stats.bedwars.beds.lost) - player.stats.bedwars.beds.broken;
                 break;
             default:
                 bot.chat(`${prefix} Invalid stat '${statparam}'. Use: fkdr, wlr, bblr`);
                 return;
         }
-        bot.chat(`${prefix} ${username}'s TARGET ${statparam.toUpperCase()}-> ${target} NEEDED: ${result}`)
+
+        bot.chat(`${prefix} ${username}'s TARGET ${statparam.toUpperCase()}-> ${target} NEEDED: ${answer} more`);
 
     } catch (error) {
         bot.chat(`${prefix} Error: ?calc <username> <statRatio> <target#>`);
@@ -90,7 +92,7 @@ async function calc(text, prefix) { //?calc <username> <stat> < target>
 }
 
 //--------------------- get stats and output --------------------
-async function get_statValue(player, statValue) {
+async function get_statValue(statValue) {
     switch (statValue) {
         case 'fkdr':
             return 'finalKDRatio';
@@ -106,10 +108,16 @@ async function get_statValue(player, statValue) {
             return 'losses';
         case 'level':
             return 'level';
+        case 'bblr':
+        case 'blr':
+            return 'BLRatio';
+        case 'beds':
+            return 'broken';
+        case 'bedslost':
+            return 'lost';
         default:
             throw new Error("INVALID_STAT");
     }
-
 }
 
 async function get_GamemodeClass(player, gamemode) {
@@ -120,133 +128,116 @@ async function get_GamemodeClass(player, gamemode) {
             return bedwars;
         case 'solo':
         case 'solos':
-            return bedwars.solo;
+            return bedwars.solo || bedwars;
         case 'doubles':
         case 'duos':
         case '2s':
-            return bedwars.doubles;
+            return bedwars.doubles || bedwars;
         case 'threes':
         case 'trios':
         case '3s':
-            return bedwars.threes;
+            return bedwars.threes || bedwars;
         case 'fours':
         case '4s':
-            return bedwars.fours;
+            return bedwars.fours || bedwars;
         default:
             throw new Error("INVALID_GAMEMODE");
     }
 }
 
 //--------------------- get stats and output --------------------
-
 async function handleBwCommand(text, prefix) {
     try {
-        const afterBWtext = text.split('?bw ')[1];
-        const parts = afterBWtext.split(' ');
-        const username = parts[0];
-        let player;
 
+        const afterBWtext = text.split('?bw ')[1];
+        if (!afterBWtext) {
+            bot.chat(`${prefix} Error: No arg provided. Use: ?bw [username] [stat] [gamemode]`);
+            return;
+        }
+
+        console.log(`afterbw: "${afterBWtext}"`);
+        const parts = afterBWtext.split(' ');
+        console.log(`Split parts:`, parts);
+
+        let username = null;
+        let stat = null;
+        let gamemode = 'overall';
+
+
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i].toLowerCase();
+
+            if (i === 0 && !statList.includes(part) && !gamemodeList.includes(part)) {
+                username = part;
+                console.log(`Identified username: ${username}`);
+            } else if (statList.includes(part) && !stat) {
+                stat = part;
+                console.log(`Identified stat: ${stat}`);
+            } else if (gamemodeList.includes(part) && gamemode === 'overall') {
+                gamemode = part;
+                console.log(`Identified gamemode: ${gamemode}`);
+            }
+        }
+
+        console.log(`Parsed - Username: ${username}, Stat: ${stat}, Gamemode: ${gamemode}`);
+
+        let player;
         try {
             player = await hypixel.getPlayer(username);
         } catch (error) {
             bot.chat(`${prefix} Error: Player '${username}' not found.`);
+            console.error('Hypixel API Error:', error.message);
             return;
         }
 
-        if (parts.length === 1) {
-            try {
-                console.log(player.stats.bedwars)
+        if (!stat && gamemode === 'overall') {
+            const level = player.stats.bedwars.level || 0;
+            const overallStats = player.stats.bedwars;
 
-                fkdr = player.stats.bedwars.finalKDRatio;
-                wlr = player.stats.bedwars.WLRatio;
-                bblr = player.stats.bedwars.beds.BLRatio;
-                finalkills = player.stats.bedwars.finalKills;
-                wins = player.stats.bedwars.wins;
-                level = player.stats.bedwars.level;
+            const fkdr = overallStats.finalKDRatio || 0;
+            const wlr = overallStats.WLRatio || 0;
+            const bblr = overallStats.beds?.BLRatio || 0;
+            const finalkills = overallStats.finalKills || 0;
+            const wins = overallStats.wins || 0;
 
-                bot.chat(`${prefix} [${level}✫] ${username}'s FKDR-${fkdr}, BBLR-${bblr}, WLR-${wlr}, FINALS-${finalkills}, WINS-${wins}`);
+            bot.chat(`${prefix} [${level}✫] ${username}'s FKDR-${fkdr}, BBLR-${bblr}, WLR-${wlr}, FINALS-${finalkills}, WINS-${wins}`);
+            return;
+        }
 
-            } catch (error) {
-                bot.chat(`${prefix} Error: ?bw <username>`);
-                console.error('Error:', error.message);
+        let gamemodeStats;
+        try {
+            gamemodeStats = await get_GamemodeClass(player, gamemode);
+        } catch (error) {
+            bot.chat(`${prefix} Error: Invalid gamemode '${gamemode}'.`);
+            return;
+        }
+
+        console.log(gamemodeStats);
+
+        let output;
+        try {
+            if (stat === 'bblr' || stat === 'blr') {
+                output = gamemodeStats.beds?.BLRatio || 0;
+            } else if (stat === 'beds') {
+                output = gamemodeStats.beds?.broken || 0;
+            } else if (stat === 'bedslost') {
+                output = gamemodeStats.beds?.lost || 0;
+            } else {
+                const statKey = await get_statValue(stat);
+                output = gamemodeStats[statKey] || 0;
             }
+        } catch (error) {
+            bot.chat(`${prefix} Error: Could not retrieve stat '${stat}'.`);
+            console.error('Stat retrieval error:', error.message);
+            return;
         }
 
-        if (parts.length === 2) { // ?bw tynis fkdr
-            try {
-                let gamemode = 'overall';
-                let statValue = parts[1].toLowerCase();
+        // Send the response
+        bot.chat(`${prefix} ${username}'s ${gamemode} ${stat.toUpperCase()}: ${output}`);
 
-                gamemode = await get_GamemodeClass(player, gamemode)
-
-
-                let bot_stat_output;
-                if (statValue === 'bblr' || statValue === 'blr') {
-                    bot_stat_output = gamemode.beds?.BLRatio;
-                } else if (statValue === 'beds') {
-                    bot_stat_output = gamemode.beds?.broken;
-                } else if (statValue === 'bedslost') {
-                    bot_stat_output = gamemode.beds?.lost;
-                } else {
-                    statValue = await get_statValue(player, statValue)
-                    bot_stat_output = gamemode[statValue];
-                }
-
-                console.log(bot_stat_output)
-
-                bot.chat(`${prefix} ${username}'s ${parts[1].toUpperCase()}: ${bot_stat_output}`);
-            } catch (error) {
-                if (error.message === "INVALID_STAT") {
-                    bot.chat(`${prefix} Invalid stat '${parts[1]}'.`);
-                } else {
-                    bot.chat(`${prefix} Error: ?bw <username> <stat>`);
-                }
-                console.error('Error:', error.message);
-            }
-        }
-
-
-        if (parts.length === 3) { // ?bw tynis fkdr duos
-            try {
-                let gamemode = parts[2].toLowerCase();
-                let statValue = parts[1].toLowerCase();
-
-                gamemode = await get_GamemodeClass(player, gamemode)
-
-
-                let bot_stat_output;
-                if (statValue === 'bblr' || statValue === 'blr') {
-                    bot_stat_output = gamemode.beds?.BLRatio;
-                } else if (statValue === 'beds') {
-                    bot_stat_output = gamemode.beds?.broken;
-                } else if (statValue === 'bedslost') {
-                    bot_stat_output = gamemode.beds?.lost;
-                } else {
-                    statValue = await get_statValue(player, statValue)
-                    bot_stat_output = gamemode[statValue];
-                }
-
-                console.log(bot_stat_output)
-
-                bot.chat(`${prefix} ${username}'s ${parts[2]} ${parts[1].toUpperCase()}: ${bot_stat_output}`);
-            } catch (error) {
-                if (error.message === "INVALID_STAT") {
-                    bot.chat(`${prefix} Invalid stat '${parts[1]}'.`);
-                } else if (error.message === "INVALID_GAMEMODE") {
-                    bot.chat(`${prefix} Invalid gamemode '${parts[2]}'.`);
-                } else {
-                    bot.chat(`${prefix} Error: ?bw <username> <stat> <mode>`);
-                }
-                console.error('Error:', error.message);
-            }
-        }
-
-        if (parts.length > 3) {
-            throw new Error(bot.chat(`${prefix} Error: Specify a command`));
-        }
     } catch (error) {
-        bot.chat(`${prefix} Error: Non-existant player`);
-        console.error('Error:', error.message);
+        bot.chat(`${prefix} Error: ${error.message}`);
+        console.error('General error:', error.message);
     }
 }
 
@@ -254,4 +245,9 @@ bot.on('spawn', () => {
     console.log('Bot spawned');
 });
 
-bot.on('error', console.log);
+bot.on('error', console.error);
+
+bot.on('end', () => {
+    console.log('Bot disconnected');
+    process.exit();
+});
